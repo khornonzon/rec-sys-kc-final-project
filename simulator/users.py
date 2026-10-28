@@ -39,12 +39,15 @@ def make_users(
     seed: int,
     like_share: float = 0.75,
     popularity_skew: float = 0.5,
+    genre_strength: float = 1.5,
 ) -> list[SimUser]:
     """Каждый пользователь оценил `rated_per_user` объектов.
 
     Вероятность оценить объект пропорциональна его латентной популярности (Zipf с показателем
-    popularity_skew) и близости жанров объекта к 2–3 любимым жанрам пользователя. Оценка —
-    лайк с вероятностью, зависящей от жанровой близости и скрытого качества объекта.
+    popularity_skew) и exp(genre_strength · близость жанров к 2–3 любимым жанрам пользователя).
+    Оценка — лайк с вероятностью, зависящей от той же близости и скрытого качества объекта.
+    genre_strength калибруется так, чтобы контентный бейзлайн давал тот же выигрыш над случайным,
+    что и на реальном грейдере (~5×).
     """
     rng = random.Random(seed)
     genres = sorted({g for _, gs in catalog for g in gs})
@@ -63,11 +66,17 @@ def make_users(
             sum(weights.get(g, 0.0) for g in gs) / math.sqrt(len(gs)) if gs else 0.0
             for _, gs in catalog
         ]
-        exposure = [p * (0.3 + a) for p, a in zip(popularity, affinity, strict=True)]
+        exposure = [
+            p * math.exp(genre_strength * a) for p, a in zip(popularity, affinity, strict=True)
+        ]
         idx = _weighted_sample_without_replacement(rng, exposure, rated_per_user)
         liked, disliked = set(), set()
         for i in idx:
-            logit = math.log(like_share / (1 - like_share)) + 1.5 * affinity[i] + 0.7 * quality[i]
+            logit = (
+                math.log(like_share / (1 - like_share))
+                + genre_strength * affinity[i]
+                + 0.7 * quality[i]
+            )
             p_like = 1.0 / (1.0 + math.exp(-logit))
             (liked if rng.random() < p_like else disliked).add(catalog[i][0])
         users.append(SimUser(user_id=f"user_{seed}_{u}", liked=liked, disliked=disliked))

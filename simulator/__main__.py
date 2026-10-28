@@ -31,6 +31,12 @@ def main() -> None:
     p.add_argument(
         "--like-share", type=float, default=d.like_share, help="доля лайков среди оценок"
     )
+    p.add_argument(
+        "--genre-strength",
+        type=float,
+        default=d.genre_strength,
+        help="сила жанровых предпочтений синтетических пользователей",
+    )
     p.add_argument("--concurrency", type=int, default=d.concurrency)
     p.add_argument(
         "--delay", type=float, default=d.delay, help="пауза после запроса пользователя, с"

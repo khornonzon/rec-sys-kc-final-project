@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     pop_mode: Literal["ctr", "legacy"] = "ctr"
     pop_sampling: Literal["mean", "thompson"] = "mean"
     pop_jitter: float = 0.1
-    ctr_prior_strength: float = 20.0
+    ctr_prior_strength: float = 10.0
     genre_prior_smoothing: float = 50.0
     n_candidates: int = 200
     cf_candidates: int = 100

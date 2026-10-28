@@ -48,6 +48,7 @@ class Config:
     catalog_path: str | None = None
     rated_per_user: int = 300
     like_share: float = 0.75
+    genre_strength: float = 1.5
     concurrency: int = 50
     delay: float = 0.0
     long_pause_after: int = 3
@@ -121,7 +122,14 @@ async def _one_request(
 async def run(cfg: Config) -> dict:
     catalog = load_catalog(cfg.catalog_path, cfg.items, cfg.seed)
     genres = dict(catalog)
-    users = make_users(catalog, cfg.users, cfg.rated_per_user, cfg.seed, cfg.like_share)
+    users = make_users(
+        catalog,
+        cfg.users,
+        cfg.rated_per_user,
+        cfg.seed,
+        cfg.like_share,
+        genre_strength=cfg.genre_strength,
+    )
     n_genres = len({g for gs in genres.values() for g in gs})
     mean_liked = sum(len(u.liked) for u in users) / len(users)
     print(
