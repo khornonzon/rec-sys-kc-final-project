@@ -35,8 +35,14 @@ echo ">>> Собираю и запускаю сервисы"
 docker compose up -d --build
 docker compose ps
 
-echo ">>> Проверка здоровья"
-sleep 5
-curl -fsS http://localhost:5001/healthcheck && echo
-curl -fsS http://localhost:5000/healthcheck && echo
+echo ">>> Ожидание готовности сервисов"
+for port in 5001 5000; do
+  for _ in $(seq 1 60); do
+    if curl -fsS "http://localhost:${port}/healthcheck" >/dev/null 2>&1; then
+      echo "порт ${port}: $(curl -fsS "http://localhost:${port}/healthcheck")"
+      break
+    fi
+    sleep 2
+  done
+done
 echo "Готово. Порты 5000 (event collector) и 5001 (recommendations) открыты на всех интерфейсах."
