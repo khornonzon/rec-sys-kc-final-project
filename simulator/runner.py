@@ -57,6 +57,19 @@ class Config:
     out: str = "simulator/out/result.json"
 
 
+async def _request(client: httpx.AsyncClient, method: str, url: str, **kw) -> httpx.Response:
+    """Запрос с одним повтором: сервер мог закрыть простаивавшее keep-alive соединение."""
+    for attempt in (1, 2):
+        try:
+            resp = await client.request(method, url, **kw)
+            resp.raise_for_status()
+            return resp
+        except (httpx.RemoteProtocolError, httpx.ReadError, httpx.ConnectError):
+            if attempt == 2:
+                raise
+    raise AssertionError("unreachable")
+
+
 def _extract_ids(body) -> list[str]:
     """Принимает оба формата ответа /recs."""
     if isinstance(body, dict):
@@ -78,9 +91,8 @@ async def _one_request(
     shown_all: set,
 ) -> None:
     started = time.perf_counter()
-    resp = await client.get(f"{cfg.recs_url}/recs/{user.user_id}")
+    resp = await _request(client, "GET", f"{cfg.recs_url}/recs/{user.user_id}")
     stats.latency_ms.append((time.perf_counter() - started) * 1000)
-    resp.raise_for_status()
     recs = _extract_ids(resp.json())
     if len(recs) < TOP_K:
         stats.short_lists += 1
@@ -94,7 +106,7 @@ async def _one_request(
 
     for item in recs:
         payload = {"user_id": user.user_id, "item_id": item, "interaction": user.reaction(item)}
-        await client.post(f"{cfg.events_url}/interact", json=payload)
+        await _request(client, "POST", f"{cfg.events_url}/interact", json=payload)
     user.seen.update(recs)
     if cfg.delay:
         await asyncio.sleep(cfg.delay)

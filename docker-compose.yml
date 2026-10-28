@@ -69,7 +69,7 @@ services:
     build: .
     pull_policy: build
     command: ["uvicorn", "services.recommendations.main:app", "--host", "0.0.0.0", "--port", "5001",
-              "--workers", "${RECS_WORKERS:-2}", "--no-access-log"]
+              "--workers", "${RECS_WORKERS:-2}", "--no-access-log", "--timeout-keep-alive", "75"]
     ports:
       - "${RECS_PORT:-5001}:5001"
     healthcheck:
@@ -81,7 +81,7 @@ services:
   event-collector:
     <<: *app-base
     command: ["uvicorn", "services.event_collector.main:app", "--host", "0.0.0.0", "--port", "5000",
-              "--workers", "${EVENT_COLLECTOR_WORKERS:-2}", "--no-access-log"]
+              "--workers", "${EVENT_COLLECTOR_WORKERS:-2}", "--no-access-log", "--timeout-keep-alive", "75"]
     ports:
       - "${EVENT_COLLECTOR_PORT:-5000}:5000"
     healthcheck:
