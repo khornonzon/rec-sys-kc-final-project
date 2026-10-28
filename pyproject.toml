@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "recsys-service"
+version = "0.1.0"
+description = "Сервис рекомендаций фильмов и сериалов: FastAPI + RabbitMQ + Redis + Qdrant"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+    "redis>=5.0,<6",
+    "qdrant-client>=1.19,<1.21",
+    "aio-pika>=9.4,<10",
+    "numpy>=1.26,<3",
+    "scipy>=1.11,<2",
+    "prometheus-client>=0.20,<1",
+    "orjson>=3.10,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "fakeredis>=2.23",
+    "httpx>=0.27",
+    "ruff>=0.5",
+    "pyarrow>=15",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "services", "simulator", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "W", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["integration: требует поднятого docker compose"]
+addopts = "-m 'not integration'"

@@ -1,0 +1,105 @@
+# Полный стек: инфраструктура + три сервиса. Переменные берутся из .env (см. .env.example).
+x-app-env: &app-env
+  REDIS_URL: redis://redis:6379/0
+  QDRANT_URL: http://qdrant:6333
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+  RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-interactions}
+  RECS_RESPONSE_FORMAT: ${RECS_RESPONSE_FORMAT:-list}
+  TOP_K: ${TOP_K:-10}
+  W_CONTENT: ${W_CONTENT:-1.0}
+  W_CF: ${W_CF:-1.0}
+  W_POP: ${W_POP:-0.5}
+  W_EXPLORE: ${W_EXPLORE:-0.3}
+  DISLIKE_WEIGHT: ${DISLIKE_WEIGHT:-0.5}
+  MMR_LAMBDA: ${MMR_LAMBDA:-0.7}
+  N_EXPLORE: ${N_EXPLORE:-2}
+  N_CANDIDATES: ${N_CANDIDATES:-200}
+  TRAIN_INTERVAL_SEC: ${TRAIN_INTERVAL_SEC:-60}
+  MIN_LIKES_TO_TRAIN: ${MIN_LIKES_TO_TRAIN:-50}
+  ALS_FACTORS: ${ALS_FACTORS:-32}
+  ALS_ITERATIONS: ${ALS_ITERATIONS:-10}
+  ALS_REG: ${ALS_REG:-0.1}
+  ALS_ALPHA: ${ALS_ALPHA:-10.0}
+  CF_TOP_N: ${CF_TOP_N:-50}
+  LOG_RAW_REQUESTS: ${LOG_RAW_REQUESTS:-20}
+
+# Образ собирается один раз (сервис recommendations), остальные сервисы его переиспользуют.
+x-app-base: &app-base
+  image: recsys-service:latest
+  pull_policy: never
+  restart: unless-stopped
+  environment: *app-env
+  depends_on:
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+    qdrant:
+      condition: service_started
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  qdrant:
+    image: qdrant/qdrant:v1.20.0
+    ports:
+      - "127.0.0.1:6333:6333"
+
+  recommendations:
+    <<: *app-base
+    build: .
+    pull_policy: build
+    command: ["uvicorn", "services.recommendations.main:app", "--host", "0.0.0.0", "--port", "5001",
+              "--workers", "${RECS_WORKERS:-2}", "--no-access-log"]
+    ports:
+      - "${RECS_PORT:-5001}:5001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5001/healthcheck', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  event-collector:
+    <<: *app-base
+    command: ["uvicorn", "services.event_collector.main:app", "--host", "0.0.0.0", "--port", "5000",
+              "--workers", "${EVENT_COLLECTOR_WORKERS:-2}", "--no-access-log"]
+    ports:
+      - "${EVENT_COLLECTOR_PORT:-5000}:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/healthcheck', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  pipeline:
+    <<: *app-base
+    command: ["python", "-m", "services.pipeline.main"]
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["monitoring"]
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
