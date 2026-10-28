@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     rabbitmq_queue: str = "interactions"
 
     # API
-    recs_response_format: Literal["list", "items_dict"] = "list"
+    recs_response_format: Literal["dict", "list"] = "dict"
     top_k: int = 10
     log_raw_requests: int = 20
 

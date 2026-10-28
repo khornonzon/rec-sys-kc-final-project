@@ -4,7 +4,7 @@ x-app-env: &app-env
   QDRANT_URL: http://qdrant:6333
   RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
   RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-interactions}
-  RECS_RESPONSE_FORMAT: ${RECS_RESPONSE_FORMAT:-list}
+  RECS_RESPONSE_FORMAT: ${RECS_RESPONSE_FORMAT:-dict}
   TOP_K: ${TOP_K:-10}
   W_CONTENT: ${W_CONTENT:-1.0}
   W_CF: ${W_CF:-1.0}
