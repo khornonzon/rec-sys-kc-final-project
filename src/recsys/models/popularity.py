@@ -11,9 +11,14 @@ def thompson_scores(
     """Случайная выборка из апостериорного распределения доли лайков каждого объекта.
 
     Объекты без фидбека получают Beta(1, 1) = равномерное распределение, то есть
-    случайный порядок — это и есть исследование на холодном старте.
+    случайный порядок — это и есть исследование на холодном старте. Для них берётся
+    rng.random напрямую: beta-семплер в 30 раз дороже, а таких объектов большинство.
     """
-    return rng.beta(likes + 1.0, dislikes + 1.0).astype(np.float32)
+    scores = rng.random(len(likes), dtype=np.float32)  # Beta(1, 1) — равномерное, дёшево
+    with_feedback = (likes + dislikes) > 0
+    if with_feedback.any():
+        scores[with_feedback] = rng.beta(likes[with_feedback] + 1.0, dislikes[with_feedback] + 1.0)
+    return scores
 
 
 def exploration_bonus(shows: np.ndarray) -> np.ndarray:

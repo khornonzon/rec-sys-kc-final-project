@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     n_explore: int = 2
     n_candidates: int = 200
     cf_candidates: int = 100
-    snapshot_refresh_sec: float = 2.0
+    snapshot_refresh_sec: float = 5.0
 
     # Pipeline (ALS)
     train_interval_sec: float = 60.0

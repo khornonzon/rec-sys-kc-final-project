@@ -152,6 +152,7 @@ class Recommender:
         selected = inject_exploration(selected, explore, self.s.n_explore, k)
 
         keys = [catalog.keys[i] for i in selected]
+        snap.shows[selected] += 1.0  # локально, до следующего обновления снапшота из Redis
         await self.store.record_shown(user, keys)
         return [_restore(snap.orig.get(key), key) for key in keys]
 

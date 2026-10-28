@@ -61,6 +61,9 @@ def test_popularity_helpers():
     dislikes = np.array([0.0, 50.0, 0.0])
     s = thompson_scores(likes, dislikes, rng)
     assert s[0] > s[1]
+    assert s.dtype == np.float32 and 0.0 <= s[2] <= 1.0
+    cold = thompson_scores(np.zeros(1000), np.zeros(1000), rng)
+    assert len(np.unique(cold)) > 990  # без фидбека — случайный порядок
     assert exploration_bonus(np.array([0.0, 99.0]))[0] > exploration_bonus(np.array([0.0, 99.0]))[1]
 
 
