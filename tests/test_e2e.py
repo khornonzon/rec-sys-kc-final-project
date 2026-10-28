@@ -43,7 +43,7 @@ def test_full_grader_protocol():
             reaction = "like" if item in (5, 11, 13, 14) else "dislike"
             r = c.post(
                 f"{EVENTS_URL}/interact",
-                json={"user_id": "e2e_user", "item_id": item, "interaction": reaction},
+                json={"user_id": "e2e_user", "item_ids": [item], "actions": [reaction]},
             )
             assert r.json()["status"] == "ok"
 

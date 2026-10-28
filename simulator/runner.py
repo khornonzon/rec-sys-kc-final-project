@@ -104,8 +104,9 @@ async def _one_request(
     stats.diversity.append(diversity(recs, genres))
     shown_all.update(recs)
 
+    # Формат грейдера: параллельные списки item_ids и actions, по одному запросу на объект.
     for item in recs:
-        payload = {"user_id": user.user_id, "item_id": item, "interaction": user.reaction(item)}
+        payload = {"user_id": user.user_id, "item_ids": [item], "actions": [user.reaction(item)]}
         await _request(client, "POST", f"{cfg.events_url}/interact", json=payload)
     user.seen.update(recs)
     if cfg.delay:
