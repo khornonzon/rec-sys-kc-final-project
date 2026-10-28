@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # Разворачивает проект на свежей Ubuntu-ВМ: docker + compose plugin, затем docker compose up.
-# Запускать на ВМ из корня репозитория: sudo bash deploy/setup_vm.sh
+# Запускать на ВМ из корня репозитория: bash deploy/setup_vm.sh (sudo подхватится сам)
 set -euo pipefail
+
+# Нужны права root (apt, docker). Если запущено обычным пользователем — перезапускаемся через sudo.
+if [ "$(id -u)" -ne 0 ]; then
+  exec sudo -E bash "$0" "$@"
+fi
 
 if ! command -v docker >/dev/null 2>&1; then
   echo ">>> Устанавливаю Docker"
