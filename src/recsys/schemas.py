@@ -30,6 +30,8 @@ REACTION_KEYS = (
     "liked",
     "is_like",
 )
+# Параллельные списки: {"item_ids": [...], "actions": [...]} — формат грейдера
+LIST_REACTION_KEYS = ("actions", "interactions", "reactions", "events", "feedbacks", "types")
 LIKE_VALUES = {"like", "likes", "liked", "1", "true", "+1", "positive", "up"}
 DISLIKE_VALUES = {"dislike", "dislikes", "disliked", "-1", "0", "false", "negative", "down"}
 
@@ -131,6 +133,24 @@ def _parse_one(rec: dict[str, Any], default_user: Any = None) -> list[Interactio
     user = next((rec[k] for k in USER_KEYS if k in rec), default_user)
     if user is None:
         raise SchemaError("не найден user_id")
+
+    # Формат грейдера: списки item_ids и actions одной длины (или одно действие на все объекты).
+    items_list = rec.get("item_ids")
+    if isinstance(items_list, list):
+        for k in LIST_REACTION_KEYS:
+            if isinstance(rec.get(k), list):
+                actions = rec[k]
+                if len(actions) == 1 and len(items_list) > 1:
+                    actions = actions * len(items_list)
+                if len(actions) != len(items_list):
+                    raise SchemaError(f"длины item_ids и {k} не совпадают")
+                out: list[Interaction] = []
+                for item, act in zip(items_list, actions, strict=True):
+                    reaction = _parse_reaction(act)
+                    if reaction is None:
+                        raise SchemaError(f"неизвестное действие: {act!r}")
+                    out.append(Interaction(canonical(user), canonical(item), reaction))
+                return out
 
     reaction: Reaction | None = None
     for k in REACTION_KEYS:
