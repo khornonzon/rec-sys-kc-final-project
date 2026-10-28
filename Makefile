@@ -39,7 +39,7 @@ ps:              ## Состояние контейнеров
 	docker compose ps
 
 simulate:        ## Прогон симулятора грейдера против localhost
-	$(PY) -m simulator --users 300 --rounds 6
+	$(PY) -m simulator --users 1000 --rounds 3
 
 deploy:          ## Копировать проект на ВМ и запустить: make deploy VM=1.2.3.4
 	@test -n "$(VM)" || (echo "Укажите VM=<ip>"; exit 1)

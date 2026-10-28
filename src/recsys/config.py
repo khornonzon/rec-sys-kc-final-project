@@ -22,13 +22,18 @@ class Settings(BaseSettings):
     log_raw_requests: int = 20
 
     # Гибридный скоринг
-    w_content: float = 1.0
-    w_cf: float = 1.0
-    w_pop: float = 0.5
-    w_explore: float = 0.3
+    w_content: float = 0.4
+    w_cf: float = 0.3
+    w_pop: float = 1.0
+    w_explore: float = 0.1
     dislike_weight: float = 0.5
-    mmr_lambda: float = 0.7
-    n_explore: int = 2
+    mmr_lambda: float = 0.9
+    n_explore: int = 1
+    pop_mode: Literal["ctr", "legacy"] = "ctr"
+    pop_sampling: Literal["mean", "thompson"] = "mean"
+    pop_jitter: float = 0.1
+    ctr_prior_strength: float = 20.0
+    genre_prior_smoothing: float = 50.0
     n_candidates: int = 200
     cf_candidates: int = 100
     snapshot_refresh_sec: float = 5.0

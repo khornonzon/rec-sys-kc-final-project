@@ -13,7 +13,14 @@ from recsys.config import Settings
 from recsys.ids import from_json_literal
 from recsys.metrics import CATALOG_SIZE, RECS_CF_USED, RECS_PROFILE_USED, SNAPSHOT_AGE
 from recsys.models.genres import Catalog
-from recsys.models.popularity import exploration_bonus, thompson_scores
+from recsys.models.popularity import (
+    ctr_posterior_mean,
+    ctr_thompson,
+    exploration_bonus,
+    genre_prior,
+    global_ctr,
+    legacy_thompson,
+)
 from recsys.models.rerank import inject_exploration, minmax, mmr
 from recsys.models.user_profile import build_profile
 from recsys.storage.qdrant_store import QdrantStore
@@ -37,6 +44,8 @@ class Snapshot:
     likes: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.float32))
     dislikes: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.float32))
     shows: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.float32))
+    prior: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.float32))
+    base_ctr: float = 0.01
     updated_at: float = 0.0
 
 
@@ -62,6 +71,15 @@ class SnapshotKeeper:
             snap.likes = _aligned(snap.catalog, likes)
             snap.dislikes = _aligned(snap.catalog, dislikes)
             snap.shows = _aligned(snap.catalog, shows)
+            if len(snap.catalog):
+                snap.base_ctr = global_ctr(snap.likes, snap.shows)
+                snap.prior = genre_prior(
+                    snap.catalog.binary,
+                    snap.likes,
+                    snap.shows,
+                    snap.base_ctr,
+                    self.settings.genre_prior_smoothing,
+                )
             snap.updated_at = time.monotonic()
             self.snapshot = snap
 
@@ -126,7 +144,25 @@ class Recommender:
             scores += self.s.w_content * content
             RECS_PROFILE_USED.inc()
 
-        scores += self.s.w_pop * thompson_scores(snap.likes, snap.dislikes, self.rng)
+        # Популярность: CTR-бандит. Логарифм растягивает шкалу, чтобы объекты с CTR в разы выше
+        # базового выигрывали заметно, а не упирались в один выброс при minmax.
+        if self.s.pop_mode == "legacy":
+            scores += self.s.w_pop * legacy_thompson(snap.likes, snap.dislikes, self.rng)
+        else:
+            if self.s.pop_sampling == "thompson":
+                ctr = ctr_thompson(
+                    snap.likes, snap.shows, snap.prior, self.s.ctr_prior_strength, self.rng
+                )
+            else:
+                ctr = ctr_posterior_mean(
+                    snap.likes, snap.shows, snap.prior, self.s.ctr_prior_strength
+                )
+                # Джиттер в доле базового CTR: разрывает ничьи на холодном старте (иначе все
+                # пользователи получили бы один список), но не меняет порядок проверенных объектов.
+                ctr = ctr + self.s.pop_jitter * snap.base_ctr * self.rng.random(n, dtype=np.float32)
+            # Пол 1e-3: CTR ниже 0.1 % неразличимы, иначе редкие крошечные семплы растягивают шкалу
+            # и съедают разницу между проверенным объектом и непоказанным.
+            scores += self.s.w_pop * minmax(np.log(np.maximum(ctr, 1e-3)))
         scores += self.s.w_explore * exploration_bonus(snap.shows)
 
         cf_scores = await self._cf_scores(state, catalog)

@@ -42,11 +42,12 @@ class RoundStats:
 class Config:
     recs_url: str = "http://localhost:5001"
     events_url: str = "http://localhost:5000"
-    users: int = 300
-    rounds: int = 6
-    items: int = 3000
+    users: int = 1000
+    rounds: int = 3
+    items: int = 24000
     catalog_path: str | None = None
-    relevant_frac: float = 0.03
+    rated_per_user: int = 300
+    like_share: float = 0.75
     concurrency: int = 50
     delay: float = 0.0
     long_pause_after: int = 3
@@ -104,9 +105,13 @@ async def _one_request(
     stats.diversity.append(diversity(recs, genres))
     shown_all.update(recs)
 
-    # Формат грейдера: параллельные списки item_ids и actions, по одному запросу на объект.
+    # Формат грейдера: параллельные списки item_ids и actions, по одному запросу на объект;
+    # реакция приходит только на заранее оценённые объекты.
     for item in recs:
-        payload = {"user_id": user.user_id, "item_ids": [item], "actions": [user.reaction(item)]}
+        reaction = user.reaction(item)
+        if reaction is None:
+            continue
+        payload = {"user_id": user.user_id, "item_ids": [item], "actions": [reaction]}
         await _request(client, "POST", f"{cfg.events_url}/interact", json=payload)
     user.seen.update(recs)
     if cfg.delay:
@@ -116,11 +121,12 @@ async def _one_request(
 async def run(cfg: Config) -> dict:
     catalog = load_catalog(cfg.catalog_path, cfg.items, cfg.seed)
     genres = dict(catalog)
-    users = make_users(catalog, cfg.users, cfg.relevant_frac, cfg.seed)
+    users = make_users(catalog, cfg.users, cfg.rated_per_user, cfg.seed, cfg.like_share)
     n_genres = len({g for gs in genres.values() for g in gs})
+    mean_liked = sum(len(u.liked) for u in users) / len(users)
     print(
-        f"Каталог: {len(catalog)} объектов, {n_genres} жанров; "
-        f"пользователей: {len(users)}, релевантных на пользователя: {len(users[0].relevant)}"
+        f"Каталог: {len(catalog)} объектов, {n_genres} жанров; пользователей: {len(users)}, "
+        f"оценено на пользователя: {cfg.rated_per_user}, из них лайков в среднем: {mean_liked:.0f}"
     )
 
     limits = httpx.Limits(max_connections=cfg.concurrency + 10)

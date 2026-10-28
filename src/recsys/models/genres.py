@@ -18,10 +18,13 @@ class Catalog:
     matrix: np.ndarray  # (n_items, n_genres), строки L2-нормированы
     genre_sets: list[frozenset[str]]
     index: dict[str, int] = field(default_factory=dict)
+    binary: np.ndarray = field(default_factory=lambda: np.zeros((0, 0), dtype=np.float32))
 
     def __post_init__(self) -> None:
         if not self.index:
             self.index = {k: i for i, k in enumerate(self.keys)}
+        if self.binary.size == 0 and self.matrix.size:
+            self.binary = (self.matrix > 0).astype(np.float32)
 
     def __len__(self) -> int:
         return len(self.keys)

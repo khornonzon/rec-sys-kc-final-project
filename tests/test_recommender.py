@@ -53,6 +53,7 @@ async def test_profile_shifts_towards_liked_genre(rec, store):
 
 async def test_cf_vectors_are_used(rec, store, qdrant):
     recommender, _ = rec
+    recommender.s = recommender.s.model_copy(update={"w_cf": 1.0})
     dim = 4
     await qdrant.recreate(dim)
     keys = [f"ac{i}" for i in range(10)]

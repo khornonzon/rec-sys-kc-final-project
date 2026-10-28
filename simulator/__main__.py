@@ -1,4 +1,4 @@
-"""CLI: python -m simulator --users 300 --rounds 6 [--catalog path/to/imdb_movies.parquet]"""
+"""CLI: python -m simulator --users 1000 --rounds 3 [--catalog path/to/imdb_movies.parquet]"""
 
 from __future__ import annotations
 
@@ -22,7 +22,15 @@ def main() -> None:
         default=d.catalog_path,
         help="parquet с колонками title_id, genre (IMDB из урока 2)",
     )
-    p.add_argument("--relevant-frac", type=float, default=d.relevant_frac)
+    p.add_argument(
+        "--rated-per-user",
+        type=int,
+        default=d.rated_per_user,
+        help="сколько объектов пользователь оценил заранее (фидбек только на них)",
+    )
+    p.add_argument(
+        "--like-share", type=float, default=d.like_share, help="доля лайков среди оценок"
+    )
     p.add_argument("--concurrency", type=int, default=d.concurrency)
     p.add_argument(
         "--delay", type=float, default=d.delay, help="пауза после запроса пользователя, с"
