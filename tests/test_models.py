@@ -5,7 +5,6 @@ from recsys.models.cf import top_n, train_als
 from recsys.models.genres import Catalog, intra_list_diversity
 from recsys.models.popularity import (
     ctr_posterior_mean,
-    ctr_thompson,
     exploration_bonus,
     genre_prior,
     global_ctr,
@@ -62,7 +61,6 @@ def test_inject_exploration_replaces_tail_without_duplicates():
 
 
 def test_popularity_helpers():
-    rng = np.random.default_rng(0)
     cat = _catalog()
     likes = np.array([10.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
     shows = np.array([20.0, 20.0, 0.0, 5.0, 0.0], dtype=np.float32)
@@ -71,8 +69,6 @@ def test_popularity_helpers():
     prior = genre_prior(cat.binary, likes, shows, base)
     # "a" (Drama) лайкали — Drama-объекты получают прior выше базового, объект без жанров — базовый
     assert prior[1] > base and prior[4] == np.float32(base)
-    s = ctr_thompson(likes, shows, prior, strength=20.0, rng=rng)
-    assert s.shape == (5,) and s[0] > s[1]  # 10/20 лайков против 0/20
     m = ctr_posterior_mean(likes, shows, prior, strength=20.0)
     assert m[0] > m[2] > m[1]  # проверенный > непоказанный > показанный без лайков
     assert exploration_bonus(np.array([0.0, 99.0]))[0] > exploration_bonus(np.array([0.0, 99.0]))[1]

@@ -7,6 +7,5 @@ __pycache__
 .ruff_cache
 simulator/out
 data
-docs
 tests
 README.md

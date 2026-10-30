@@ -1,4 +1,4 @@
-"""Популярность как доля лайков на показ (CTR): апостериорное среднее или Thompson sampling.
+"""Популярность как доля лайков на показ (CTR) с жанровым априором.
 
 Грейдер присылает фидбек не на каждый показ, а только на заранее оценённые объекты,
 поэтому знаменателем служат показы, а не дизлайки. Априорный CTR объекта берётся
@@ -36,23 +36,6 @@ def genre_prior(
     return prior.astype(np.float32)
 
 
-def ctr_thompson(
-    likes: np.ndarray,
-    shows: np.ndarray,
-    prior: np.ndarray,
-    strength: float,
-    rng: np.random.Generator,
-) -> np.ndarray:
-    """Выборка CTR из апостериорного Beta(likes + s·prior, misses + s·(1 − prior)).
-
-    strength — вес априорного знания в «псевдопоказах»: чем он меньше, тем смелее
-    исследуются непоказанные объекты.
-    """
-    a = likes + strength * prior
-    b = np.maximum(shows - likes, 0.0) + strength * (1.0 - prior)
-    return rng.beta(a, b).astype(np.float32)
-
-
 def ctr_posterior_mean(
     likes: np.ndarray, shows: np.ndarray, prior: np.ndarray, strength: float
 ) -> np.ndarray:
@@ -68,14 +51,3 @@ def ctr_posterior_mean(
 def exploration_bonus(shows: np.ndarray) -> np.ndarray:
     """Бонус редко показанным объектам (работает на покрытие каталога)."""
     return (1.0 / np.sqrt(1.0 + shows)).astype(np.float32)
-
-
-def legacy_thompson(
-    likes: np.ndarray, dislikes: np.ndarray, rng: np.random.Generator
-) -> np.ndarray:
-    """Старая модель: Beta(likes + 1, dislikes + 1). Оставлена для A/B-сравнений в симуляторе."""
-    scores = rng.random(len(likes), dtype=np.float32)
-    with_feedback = (likes + dislikes) > 0
-    if with_feedback.any():
-        scores[with_feedback] = rng.beta(likes[with_feedback] + 1.0, dislikes[with_feedback] + 1.0)
-    return scores

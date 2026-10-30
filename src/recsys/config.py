@@ -29,8 +29,6 @@ class Settings(BaseSettings):
     dislike_weight: float = 0.5
     mmr_lambda: float = 0.9
     n_explore: int = 1
-    pop_mode: Literal["ctr", "legacy"] = "ctr"
-    pop_sampling: Literal["mean", "thompson"] = "mean"
     pop_jitter: float = 0.1
     ctr_prior_strength: float = 10.0
     genre_prior_smoothing: float = 50.0
